@@ -1,0 +1,9 @@
+INFO:root:python3 Landry_Davin_Best
+INFO:root:Kp: 3
+INFO:root:Ki: 0
+INFO:root:Joint speed limit: 1000 rad/s
+INFO:root:Initial configuration [ 0.         -0.2         0.          0.          1.57079633 -1.57079633
+ -0.78539816  0.          0.          0.          0.          0.
+  0.        ]
+INFO:root:Trajectory saved to Final_Trajectory.csv
+INFO:root:Xerror data saved to Xerrs.csv

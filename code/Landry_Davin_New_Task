@@ -1,0 +1,412 @@
+'''
+run this file by typing "python3 Landry_Davin_New_Task" into the command line
+'''
+import modern_robotics as mr
+import numpy as np
+import csv
+from numpy import pi,cos,sin
+import matplotlib.pyplot as plt
+import logging
+logging.basicConfig(filename='New_Task.log',level=logging.INFO)
+logging.info("python3 Landry_Davin_New_Task")
+
+####################################################### milestone 2
+
+def add_section(out,traj,grip):
+
+    for m in out:
+        r11 = m[0][0]
+        r12 = m[0][1]
+        r13 = m[0][2]
+        r21 = m[1][0]
+        r22 = m[1][1]
+        r23 = m[1][2]
+        r31 = m[2][0]
+        r32 = m[2][1]
+        r33 = m[2][2]
+        px = m[0][3]
+        py = m[1][3]
+        pz = m[2][3]
+
+        form = np.array([r11,r12,r13,r21,r22,r23,r31,r32,r33,px,py,pz,grip])
+        traj.append(form)
+    return traj
+
+def TrajectoryGenerator(Tse_i,Tsc_i,Tsc_f,Tce_grasp,Tce_standoff,k):
+    '''
+    The function takes the transforms, performs any necessary rotations by using matrix multiplication with rotation matrices, 
+    then conducts CartesianTrajectory functions for each path action from transform to transform. 
+        INPUTS:
+    Tse_i - The initial configuration of the end-effector in the reference trajectory: Tse,initial.
+    Tsc_i - The cube's initial configuration: Tsc,initial.
+    Tsc_f - The cube's desired final configuration: Tsc,final.
+    Tce_grasp - The end-effector's configuration relative to the cube when it is grasping the cube: Tce,grasp.
+    Tce_standoff - The end-effector's standoff configuration above the cube, before and after grasping, relative to the cube: Tce,standoff. This specifies the configuration of the end-effector {e} relative to the cube frame {c} before lowering to the grasp configuration Tce,grasp, for example.
+    k - The number of trajectory reference configurations per 0.01 seconds: k
+        OUTPUTS:
+    Landry_Davin_milestone2.csv - A CSV with the continuous path trajectory of the end-effector.
+    '''
+    traj = []
+    # 90 degree rotation in y axis for initial EE pose
+    phi = pi/2
+    rot_y = np.array([[cos(phi),0,sin(phi),0],[0,1,0,0],[-sin(phi),0,cos(phi),0],[0,0,0,1]])
+
+    # 12 , 23, 33-grab, 32, 24, 45, 55-open, 54
+
+    T1 = Tse_i
+    T2 = Tsc_i@Tce_standoff
+
+    T3 = Tsc_i@Tce_grasp
+
+    T4 = Tsc_f@Tce_standoff
+    T5 = Tsc_f@Tce_grasp
+    
+    # initial to initial standoff
+    out=mr.CartesianTrajectory(T1, T2, Tf=5, N=5*k/0.01, method=3)
+    traj=add_section(out,traj,0)
+
+    # initial standoff to initial grasp
+    out=mr.CartesianTrajectory(T2, T3, Tf=5, N=5*k/0.01, method=3)
+    traj=add_section(out,traj,0)
+
+    # gripper close
+    out=mr.CartesianTrajectory(T3, T3, Tf=5, N=5*k/0.01, method=3)
+    traj=add_section(out,traj,1)
+
+    # initial grasp to initial standoff
+    out=mr.CartesianTrajectory(T3, T2, Tf=5, N=5*k/0.01, method=3)
+    traj=add_section(out,traj,1)
+
+    # initial standof to final standoff
+    out=mr.CartesianTrajectory(T2, T4, Tf=5, N=5*k/0.01, method=3)
+    traj=add_section(out,traj,1)
+
+    # final standoff to final grasp
+    out=mr.CartesianTrajectory(T4, T5, Tf=5, N=5*k/0.01, method=3)
+    traj=add_section(out,traj,1)
+
+    # gripper open
+    out=mr.CartesianTrajectory(T5, T5, Tf=5, N=5*k/0.01, method=3)
+    traj=add_section(out,traj,0)
+    
+    # final grasp to final standoff
+    out=mr.CartesianTrajectory(T5, T4, Tf=5, N=5*k/0.01, method=3)
+    traj=add_section(out,traj,0)
+   
+    # np.savetxt('Landry_Davin_milestone2.csv',traj,delimiter=",")
+
+    return traj
+
+# inits for milestone 2
+phi = 3*pi/4
+theta = 0
+psy = 0
+
+#rotation matrices
+rot_z = np.array([[cos(theta),-sin(theta),0,0],[sin(theta),cos(theta),0,0],[0,0,0,0],[0,0,0,1]])
+rot_x = np.array([[1,0,0,0],[0,cos(psy),-sin(psy),0],[0,sin(psy),cos(psy),0],[0,0,0,1]])
+rot_y = np.array([[cos(phi),0,sin(phi),0],[0,1,0,0],[-sin(phi),0,cos(phi),0],[0,0,0,1]])
+
+# initial ee transform
+##################################################################################################
+Tse_i = np.array([[0,0,1,0],[0,1,0,0],[-1,0,0,.5],[0,0,0,1]])
+
+# initial and final cube transforms
+Tsc_i = np.array([[1,0,0,1.5],[0,1,0,-1],[0,0,1,0.025],[0,0,0,1]]) 
+Tsc_f = np.array([[0,-1,0,0.5],[1,0,0,0.75],[0,0,1,0.025],[0,0,0,1]]) 
+logging.info(f"Cube Initial configuration {Tsc_i}")
+logging.info(f"Cube Final configuration {Tsc_f}")
+
+# cube to ee grasp transform
+Tce_grasp = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0.01],[0,0,0,1]])
+Tce_grasp = Tce_grasp@rot_y
+
+# cube to standoff transform
+Tce_standoff = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0.15],[0,0,0,1]])
+Tce_standoff = Tce_standoff@rot_y
+
+# The number of trajectory reference configurations per 0.01 seconds
+k=1
+
+ee_config = TrajectoryGenerator(Tse_i,Tsc_i,Tsc_f,Tce_grasp,Tce_standoff,k)
+#####################################################################
+#End of milestone 2
+
+
+
+######################################################################## milestone 1
+def NextState(config,qdot,dt,limit):
+    '''
+    INPUTS:
+    config - A 12-vector representing the current configuration of the robot (3 variables for the chassis configuration, 5 variables for the arm configuration, and 4 variables for the wheel angles).
+    qdot - A 9-vector of controls indicating the arm joint speeds thetadot (5 variables) and the wheel speeds u (4 variables).
+    dt - A timestep Δt.
+    limit - A positive real value indicating the maximum angular speed of the arm joints and the wheels. For example, if this value is 12.3, the angular speed of the wheels and arm joints is limited to the range [-12.3 radians/s, 12.3 radians/s]. 
+        Any speed in the 9-vector of controls that is outside this range will be set to the nearest boundary of the range. If you don't want speed limits, just use a very large number. If you prefer, your function can accept separate speed limits for the wheels and arm joints.
+    OUTPUT:
+    joints - new arm joint angles = (old arm joint angles) + (joint speeds) * Δt
+    wheels - new wheel angles = (old wheel angles) + (wheel speeds) * Δt
+    new_config - new chassis configuration is obtained from odometry, as described in Chapter 13.4
+    '''
+    l = 0.47/2
+    w = 0.15
+    r = 0.0475
+
+    F = np.array([[-1/(l+w),1/(l+w),1/(l+w),-1/(l+w)],[1,1,1,1],[-1,1,-1,1]])*(r/4)
+    # print(F)
+
+    #limits area
+    up_lim = limit
+    down_lim = -limit
+
+    # print("joints")
+    joints = config[3:8]
+    # print(joints)
+    joint_speeds = qdot[:5]
+    # print(joint_speeds)
+
+    for i in range(len(joint_speeds)):
+        if joint_speeds[i]>up_lim:
+            joint_speeds[i]=up_lim
+        elif abs(joint_speeds[i])>up_lim:
+            joint_speeds[i]=down_lim
+    
+
+    new_joints = joints + joint_speeds*dt
+    # print(new_joints)
+
+    # print("wheels")
+    wheels = config[8:12]
+    # print(wheels)
+    wheel_speeds = qdot[5:]
+    # print(wheel_speeds)
+
+    for i in range(4):
+        if wheel_speeds[i]>up_lim:
+            wheel_speeds[i]=up_lim
+            print('changed up')
+        elif abs(wheel_speeds[i])>up_lim:
+            wheel_speeds[i]=down_lim
+            print("changed down")
+
+    wheel_delta = wheel_speeds*dt
+    new_wheels = wheels + wheel_delta
+    # print(wheel_delta)
+    # print(new_wheels)
+
+    # print("configuration")
+    q = config[0:3]
+    # print(q)
+    phi = config[0]
+
+    Vb = F@wheel_delta
+    # print(Vb)
+
+    if Vb[0] == 0:
+        qb_delta = np.array([0,Vb[1],Vb[2]]).T
+        # print("VB ==0")
+    else:
+        qb_delta = np.array([Vb[0],(Vb[1]*sin(Vb[0])+Vb[2]*(cos(Vb[2])-1))/Vb[0],(Vb[2]*sin(Vb[0])+Vb[1]*(1-cos(Vb[2])))/Vb[0]])
+        # print("not zero")
+    
+    q_delta = np.array([[1,0,0],[0,cos(phi),-sin(phi)],[0,sin(phi),cos(phi)]])@qb_delta
+    # print(q_delta)
+
+    new_q = q+q_delta
+    # print(new_q)
+
+    new_config = np.array([new_q[0],new_q[1],new_q[2],new_joints[0],new_joints[1],new_joints[2],new_joints[3],new_joints[4],new_wheels[0],new_wheels[1],new_wheels[2],new_wheels[3]])
+    # print(new_config)
+    return new_config
+
+##################################################################### milestone 3
+
+def FeedbackControl(X,Xd,Xd_next,dt,Kp,Ki,config):
+    '''
+    X - The current actual end-effector configuration X.
+    Xd - The current end-effector reference configuration Xd (i.e., Tse,d).
+    Xd_next - The end-effector reference configuration at the next timestep in the reference trajectory, Xd,next (i.e., Tse,d,next), at a time Δt later.
+    Kp, Ki - The PI gain matrices Kp and Ki.
+    dt - The timestep Δt between reference trajectory configurations.
+    '''
+    l = 0.47/2
+    w = 0.15
+    r = 0.0475
+    X_inv = mr.TransInv(X)
+    Xerr_mat = mr.MatrixLog6(X_inv@Xd)
+    # print(Xerr_mat)
+    Xerr = mr.se3ToVec(Xerr_mat)
+    # print(f"Xerr {Xerr}")
+
+    Xd_inv = mr.TransInv(Xd)
+    Vd_mat = (1/dt)* mr.MatrixLog6(Xd_inv@Xd_next)
+    Vd = mr.se3ToVec(Vd_mat)
+    # print(f" Vd {Vd}")
+
+    Vt = mr.Adjoint(X_inv@Xd)@Vd + Kp@Xerr + Ki@Xerr*dt
+    # print(f"V {Vt}")
+
+    F6 = np.array([[0,0,0,0],[0,0,0,0],[-1/(l+w),1/(l+w),1/(l+w),-1/(l+w)],[1,1,1,1],[-1,1,-1,1],[0,0,0,0]])*(r/4)
+    theta_list = config[3:8]
+
+    B1 = np.array([0,0,1,0,0.033,0])
+    B2 = np.array([0,-1,0,-0.5076,0,0])
+    B3 = np.array([0,-1,0,-0.3526,0,0])
+    B4 = np.array([0,-1,0,-0.2176,0,0])
+    B5 = np.array([0,0,1,0,0,0])
+
+    Blist = np.array([B1,B2,B3,B4,B5]).T
+    # print(Blist)
+
+    M0e = np.array([[1,0,0,0.033],[0,1,0,0],[0,0,1,0.6546],[0,0,0,1]])
+
+    Tb0 = np.array([[1,0,0,0.1662],[0,1,0,0],[0,0,1,0.0026],[0,0,0,1]])
+    T0e = mr.FKinBody(M0e,Blist,theta_list) 
+    # print(T0e)
+    T0e_inv = mr.TransInv(T0e)
+    Tb0_inv = mr.TransInv(Tb0)
+
+    J_base = mr.Adjoint(T0e_inv@Tb0_inv)@F6
+    # print(f"jbase {J_base}")
+
+    J_arm = mr.JacobianBody(Blist,theta_list)
+    # print(f" jarm {J_arm}")
+    Je = np.concatenate((J_base,J_arm),axis=1)
+    # print(f"Je {Je}")
+
+    Je_pinv = np.linalg.pinv(Je)
+    # print(Je_pinv)
+
+    qdot = Je_pinv@Vt
+    # print(qdot)
+    return np.array([qdot[4],qdot[5],qdot[6],qdot[7],qdot[8],qdot[0],qdot[1],qdot[2],qdot[3]]),Xerr
+
+############################################################### Final code
+def Full_robot_generation(new_config,ee_config):
+    '''
+    This function incorporates the codes from milestone 1 and 3. 
+    It uses the end effector trajectory from milestone 2 to perform a feed forward trajectory planning for the configuration of the whole youbot robot. 
+    The code creates a csv file of the configuration array to perform the trajectory in coppelia sim.
+    The code also plots the Xerror values and saves the arrays in a csv. 
+        INPUTS
+    ee_config - The trajectory of the desired end-effector configuration.
+    new_config - the current configuration of the youbot robot
+    '''
+    #Calls
+    iterations = len(ee_config)-1
+    # np.savetxt('traj.csv',ee_config,delimiter=",")
+    new_configs = []
+    Xerr_array1 = []
+    Xerr_array2 = []
+    Xerr_array3 = []
+    Xerr_array4 = []
+    Xerr_array5 = []
+    Xerr_array6 = []
+
+    for i in range(iterations):
+
+        new_configs.append(new_config)
+        print(f"iteration {i}")
+        Xd = np.array([[ee_config[i][0],ee_config[i][1],ee_config[i][2],ee_config[i][9]],
+                        [ee_config[i][3],ee_config[i][4],ee_config[i][5],ee_config[i][10]],
+                        [ee_config[i][6],ee_config[i][7],ee_config[i][8],ee_config[i][11]],
+                        [0,0,0,1]])
+                        
+        
+        Xd_next = np.array([[ee_config[i+1][0],ee_config[i+1][1],ee_config[i+1][2],ee_config[i+1][9]],
+                        [ee_config[i+1][3],ee_config[i+1][4],ee_config[i+1][5],ee_config[i+1][10]],
+                        [ee_config[i+1][6],ee_config[i+1][7],ee_config[i+1][8],ee_config[i+1][11]],
+                        [0,0,0,1]])
+
+
+        theta_list = new_config[3:8]
+        T0e = mr.FKinBody(M0e,Blist,theta_list)
+        Tbe = Tb0@T0e
+        Tsb = np.array([[cos(new_config[0]),-sin(new_config[0]),0,new_config[1]],[sin(new_config[0]),cos(new_config[0]),0,new_config[2]],[0,0,1,0.0963],[0,0,0,1]])
+        X = Tsb@Tbe
+        qdot,Xerr = FeedbackControl(X,Xd,Xd_next,dt,Kp,Ki,new_config)
+
+        Xerr_array1.append(Xerr[0])
+        Xerr_array2.append(Xerr[1])
+        Xerr_array3.append(Xerr[2])
+        Xerr_array4.append(Xerr[3])
+        Xerr_array5.append(Xerr[4])
+        Xerr_array6.append(Xerr[5])
+
+        current_config = NextState(new_config,qdot,dt,limit)
+        new_config = np.array([current_config[0],current_config[1],current_config[2],current_config[3],current_config[4],current_config[5],current_config[6],current_config[7],current_config[8],current_config[9],current_config[10],current_config[11],ee_config[i][12]])
+        
+    np.savetxt('Final_Trajectory.csv',new_configs,delimiter=",")
+    logging.info("Trajectory saved to Final_Trajectory.csv")
+    all_Xerrs = np.array([Xerr_array1,Xerr_array2,Xerr_array3,Xerr_array4,Xerr_array5,Xerr_array6])
+    np.savetxt('Xerrs.csv',new_configs,delimiter=",")
+    logging.info("Xerror data saved to Xerrs.csv")
+
+    plt.figure()
+    plt.title("Xerr graph")
+    plt.plot(np.linspace(0,40,iterations),Xerr_array1,label="Xerr 1")
+    plt.plot(np.linspace(0,40,iterations),Xerr_array2,label="Xerr 2")
+    plt.plot(np.linspace(0,40,iterations),Xerr_array3,label="Xerr 3")
+    plt.plot(np.linspace(0,40,iterations),Xerr_array4,label="Xerr 4")
+    plt.plot(np.linspace(0,40,iterations),Xerr_array5,label="Xerr 5")
+    plt.plot(np.linspace(0,40,iterations),Xerr_array6,label="Xerr 6")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Error")
+    plt.legend()
+    plt.show()
+
+
+
+# Value inits
+dt = 0.01
+
+M0e = np.array([[1,0,0,0.033],[0,1,0,0],[0,0,1,0.6546],[0,0,0,1]])
+
+B1 = np.array([0,0,1,0,0.033,0])
+B2 = np.array([0,-1,0,-0.5076,0,0])
+B3 = np.array([0,-1,0,-0.3526,0,0])
+B4 = np.array([0,-1,0,-0.2176,0,0])
+B5 = np.array([0,0,1,0,0,0])
+Blist = np.array([B1,B2,B3,B4,B5]).T
+
+Tb0 = np.array([[1,0,0,0.1662],[0,1,0,0],[0,0,1,0.0026],[0,0,0,1]])
+
+
+# Variable inits
+Kp_scalar = 3
+Ki_scalar = 0
+Kp = np.identity(6)*Kp_scalar
+Ki = np.identity(6)*Ki_scalar
+limit = 10
+logging.info(f"Kp: {Kp_scalar}")
+logging.info(f"Ki: {Ki_scalar}")
+logging.info(f"Joint speed limit: {limit} rad/s")
+
+#initial config
+x = -0.2
+y = 0
+phi = -pi/2
+theta1 = 0
+theta2 = pi/2
+theta3 = -pi/2
+theta4 = -pi/4
+theta5 = 0
+wtheta1 = 0
+wtheta2 = 0
+wtheta3 = 0
+wtheta4 = 0
+
+tdot1 = 0
+tdot2 = 0
+tdot3 = 0
+tdot4 = 0
+tdot5 = 0
+
+u1 = 0
+u2 = 0
+u3 = 0
+u4 = 0
+qdot = np.array([tdot1,tdot2,tdot3,tdot4,tdot5,u1,u2,u3,u4])
+new_config = np.array([phi,x,y,theta1,theta2,theta3,theta4,theta5,wtheta1,wtheta2,wtheta3,wtheta4,0])
+logging.info(f"Initial configuration {new_config}")
+Full_robot_generation(new_config,ee_config)

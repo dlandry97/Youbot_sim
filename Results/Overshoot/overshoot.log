@@ -1,0 +1,9 @@
+INFO:root:python3 Landry_Davin_Overshoot
+INFO:root:Kp: 5
+INFO:root:Ki: 3
+INFO:root:Joint speed limit: 10 rad/s
+INFO:root:Initial configuration [ 1.57079633 -2.          0.          0.          1.57079633 -1.57079633
+ -0.78539816  0.          0.          0.          0.          0.
+  0.        ]
+INFO:root:Trajectory saved to Final_Trajectory.csv
+INFO:root:Xerror data saved to Xerrs.csv

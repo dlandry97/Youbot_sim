@@ -1,0 +1,17 @@
+INFO:root:python3 Landry_Davin_New_Task
+INFO:root:Cube Initial configuration [[ 1.     0.     0.     1.5  ]
+ [ 0.     1.     0.    -1.   ]
+ [ 0.     0.     1.     0.025]
+ [ 0.     0.     0.     1.   ]]
+INFO:root:Cube Final configuration [[ 0.    -1.     0.     0.5  ]
+ [ 1.     0.     0.     0.75 ]
+ [ 0.     0.     1.     0.025]
+ [ 0.     0.     0.     1.   ]]
+INFO:root:Kp: 3
+INFO:root:Ki: 0
+INFO:root:Joint speed limit: 10 rad/s
+INFO:root:Initial configuration [-1.57079633 -0.2         0.          0.          1.57079633 -1.57079633
+ -0.78539816  0.          0.          0.          0.          0.
+  0.        ]
+INFO:root:Trajectory saved to Final_Trajectory.csv
+INFO:root:Xerror data saved to Xerrs.csv
